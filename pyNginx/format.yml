@@ -1,0 +1,32 @@
+config_filename1:
+    server_name: 
+    web_upstream: 192.168.13.1:8076
+    poll_upstream: 192.168.13.1:8072
+    proxy_pass: 192.168.13.1:8076
+    httpaccess: true
+    httpsaccess: true
+    proxy_http_11: true
+    cache_statics: true
+    disable_cache_zone: false
+    header_upgrade: true
+    header_connection: true
+    header_host: true
+    masquerade: grangettes.odoocloud.ch
+    redirect: https://www.grangettesgeneve.swiss
+    allow_tls_v1:
+    enable_hsts:
+    ssl_certificate:
+    ssl_certificate_key:
+    ssl_trusted_certificate:
+    disable_stapling:
+    certificat_number: "{{ wildcard_certificat }}"
+    ip_allow: 
+        - 80.254.189.97
+        - 81.62.154.114
+        - 45.66.220.128
+        - 83.166.136.167
+        - 46.20.242.156
+        - 45.157.190.106
+        - 46.20.242.149
+    ip_deny:
+        - all

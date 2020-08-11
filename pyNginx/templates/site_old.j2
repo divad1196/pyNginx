@@ -1,0 +1,186 @@
+#######################################################
+# ** DO NOT EDIT ** Ansible managed ** DO NOT EDIT ** #
+#######################################################
+
+{% set config = item %}
+
+{% if not config.get('httpaccess') %}
+server {
+  server_name {{ server_name }};
+  listen 80;
+
+{% if config.get('httpsaccess') %}
+  location / {
+    rewrite ^/.*$ https://$host$request_uri? permanent;
+  }
+
+{% if config.get('posbox') %}
+  location /pos/web {
+    proxy_pass http://{{ config.get('web_upstream') or 'localhost:8069' }};
+  }
+{% endif %}
+{% endif %}
+
+  # Let's Encrypt challenges
+  location /.well-known {
+    root /var/www/letsencrypt;
+  }
+}
+{% endif %}
+server {
+  server_name {{ server_name }};
+{% if config.get('httpaccess') %}
+  listen 80;
+{% endif %}
+{% if config.get('httpsaccess') %}
+  listen 443 ssl;
+
+  # TLS stuffs
+  {% if config.get('ssl_certificate') %}
+  ssl_certificate    {{ config.get('ssl_certificate') }};
+  {% else %}
+  ssl_certificate     /etc/letsencrypt/live/{{ inventory_hostname }}_{{ config.get('certificat_number') }}/fullchain.pem;
+  {% endif %}
+
+  {% if config.get('ssl_certificate_key') %}
+  ssl_certificate_key {{ config.get('ssl_certificate_key') }};
+  {% else %}
+  ssl_certificate_key /etc/letsencrypt/live/{{ inventory_hostname }}_{{ config.get('certificat_number') }}/privkey.pem;
+  {% endif %}
+  keepalive_timeout   60;
+  ssl_ciphers             HIGH+EECDH:!DSS@STRENGTH;
+  ssl_protocols
+    {% if config.get('allow_tls_v1') %}
+      TLSv1
+      TLSv1.1
+    {% endif %}
+    TLSv1.2;
+  ssl_prefer_server_ciphers on;
+  ssl_session_timeout 30m;
+{% if config.get('enable_hsts') %}
+  add_header Strict-Transport-Security max-age=31556926;
+{% endif %}
+
+{% if config.get('ssl_trusted_certificate') %}
+ssl_trusted_certificate {{ config.get('ssl_trusted_certificate') }};
+{% else %}
+ssl_trusted_certificate /etc/letsencrypt/live/{{ inventory_hostname }}_{{ config.get('certificat_number') }}/chain.pem;
+{% endif %}
+
+{% if not config.get('disable_stapling') %}
+
+  ssl_stapling on;
+  ssl_stapling_verify on;
+{% endif %}
+{% endif %}
+
+{% if config.get('redirect') %}
+  location / {
+    rewrite ^/.*$ {{ config.get('redirect') }}$request_uri? permanent;
+    {% if config.get('ip_allow') %}
+      {% for allow_ip in config.get('ip_allow') %}
+        allow {{ allow_ip }};
+      {% endfor %}
+    {% endif %}
+    {% if config.get('ip_deny') %}
+      {% for deny_ip in config.get('ip_deny') %}
+        deny {{ deny_ip }};
+      {% endfor %}
+    {% endif %}
+  }
+
+{% else %}
+  # proxy-mode special headers
+  proxy_set_header X-Forwarded-Host
+    {% if config.get('masquerade') %}
+      {{ config.get('masquerade') }}
+    {% else %}
+      $host
+    {% endif %};
+  proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+  proxy_set_header X-Forwarded-Proto $scheme;
+  proxy_set_header X-Real-IP $remote_addr;
+
+  location / {
+    {% if config.get('proxy_pass') %}
+    proxy_pass http://{{ config.get("proxy_pass") }};
+    {% endif %}
+    {% if config.get('masquerade') %}
+    proxy_redirect $scheme://{{ config.get('masquerade') }}/ $scheme://$host/;
+    {% endif %}
+    {% if config.get('proxy_http_11') %}
+    proxy_http_version 1.1;
+    {% endif %}
+    {% if config.get('header_upgrade') %}
+    proxy_set_header Upgrade $http_upgrade;
+    {% endif %}
+    {% if config.get('header_connection') %}
+    proxy_set_header Connection "upgrade";
+    {% endif %}
+    {% if config.get('header_host') %}
+    proxy_set_header Host $host;
+    {% endif %}
+    {% if config.get('ip_allow') %}
+      {% for allow_ip in config.get('ip_allow') %}
+        allow {{ allow_ip }};
+      {% endfor %}
+    {% endif %}
+    {% if config.get('ip_deny') %}
+      {% for deny_ip in config.get('ip_deny') %}
+        deny {{ deny_ip }};
+      {% endfor %}
+    {% endif %}
+  }
+
+{% if not config.get('disable_longpolling') %}
+  # So 'Discuss' works properly
+  location /longpolling {
+    proxy_pass http://{{ config.get('poll_upstream') or 'localhost:8072' }};
+  }
+{% endif %}
+
+{% if config.get('posbox') %}
+  location /web/login {
+    if ($scheme = http) {
+      rewrite ^/.*$ https://$host$request_uri? permanent;
+    }
+    proxy_pass http://{{ config.get('web_upstream') }};
+  }
+
+  location /pos/web {
+    if ($scheme = https) {
+      rewrite ^/.*$ http://$host$request_uri? permanent;
+    }
+    proxy_pass http://{{ config.get('web_upstream') }};
+  }
+{% endif %}
+
+  # optimizing dynamic content
+  proxy_buffering off;
+
+{% if not config.get('cache_statics') %}
+  # optimizing static content
+  location ~ ^/[a-zA-Z0-9_-]+/static {
+    proxy_buffering on;  # required for caching
+    {% if not config.get('disable_cache_zone') %}
+    proxy_cache cache_zone;
+    {% endif %}
+    proxy_cache_lock on;
+    proxy_cache_valid 1m;
+    proxy_pass http://{{ config.get('web_upstream') or 'localhost:8069' }};
+    expires 24h;
+  }
+{% endif %}
+{% endif %}
+
+{% if config.get('httpaccess') %}
+  # Let's Encrypt challenges
+  location /.well-known {
+    root /var/www/letsencrypt;
+  }
+{% endif %}
+
+  proxy_read_timeout 720s;
+  proxy_connect_timeout 720s;
+  proxy_send_timeout 720s;
+}
