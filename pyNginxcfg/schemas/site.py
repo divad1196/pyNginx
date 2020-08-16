@@ -20,7 +20,7 @@ SiteConfigSchemaObject = {
     Optional("redirect"): str,
     Optional("allow_tls_v1"): Nullable(bool),
     Optional("enable_hsts"): bool,
-    Optional("certificat_folder"): str,
+    Optional("certificate_folder"): str,
     Optional("ssl_certificate"): str,
     Optional("ssl_certificate_key"): str,
     Optional("ssl_trusted_certificate"): bool,

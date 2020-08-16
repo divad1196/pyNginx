@@ -37,13 +37,13 @@ server {
   {% if config.ssl_certificate %}
   ssl_certificate    {{ config.ssl_certificate }};
   {% else %}
-  ssl_certificate     /etc/letsencrypt/live/{{ config.certificat_folder }}/fullchain.pem;
+  ssl_certificate     /etc/letsencrypt/live/{{ config.certificate_folder }}/fullchain.pem;
   {% endif %}
 
   {% if config.ssl_certificate_key %}
   ssl_certificate_key {{ config.ssl_certificate_key }};
   {% else %}
-  ssl_certificate_key /etc/letsencrypt/live/{{ config.certificat_folder }}/privkey.pem;
+  ssl_certificate_key /etc/letsencrypt/live/{{ config.certificate_folder }}/privkey.pem;
   {% endif %}
   keepalive_timeout   60;
   ssl_ciphers             HIGH+EECDH:!DSS@STRENGTH;
@@ -62,7 +62,7 @@ server {
 {% if config.ssl_trusted_certificate %}
 ssl_trusted_certificate {{ config.ssl_trusted_certificate }};
 {% else %}
-ssl_trusted_certificate /etc/letsencrypt/live/{{ config.certificat_folder }}/chain.pem;
+ssl_trusted_certificate /etc/letsencrypt/live/{{ config.certificate_folder }}/chain.pem;
 {% endif %}
 
 {% if not config.disable_stapling %}
